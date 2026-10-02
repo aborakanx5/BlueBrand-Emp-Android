@@ -17,7 +17,7 @@ jobs:
       - name: Extract BlueBrand Emp project
         run: |
           mkdir -p extracted
-          unzip "BlueBrand-Emp-Android (1).zip" -d extracted
+          unzip "BlueBrand-Emp-Android-NewIcon.zip" -d extracted
           echo "Project extracted:"
           find extracted -maxdepth 3 -type f | head -50
 
