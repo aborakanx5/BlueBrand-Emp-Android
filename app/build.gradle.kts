@@ -1,10 +1,10 @@
 /* نسختين من نفس المشروع وبنفس أمر البناء:
    emp   = تطبيق الموظفين (بوابة الموظفين)  ·  admin = تطبيق المحاسبي (الإدارة)
    رقم الإصدار لكل نسخة هنا ↓ — زوّد الرقم اللي تبي تحدّثه */
-val empVersionCode = 7
-val empVersion = "1.1.4"
-val adminVersionCode = 3
-val adminVersion = "1.0.2"
+val empVersionCode = 8
+val empVersion = "1.1.5"
+val adminVersionCode = 4
+val adminVersion = "1.0.3"
 
 plugins {
     id("com.android.application")

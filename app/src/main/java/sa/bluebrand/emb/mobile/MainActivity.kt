@@ -106,27 +106,18 @@ class MainActivity : Activity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
-            /* نوافذ alert / confirm / prompt من البرنامج (تأكيد الإرسال والحذف…) — بدونها الزر ما يسوي شي داخل التطبيق */
+            /* نوافذ alert / confirm / prompt من البرنامج — بتصميم عصري (بطاقة، أيقونة، أزرار بلون الهوية) */
             override fun onJsAlert(view: WebView, url: String?, message: String?, result: android.webkit.JsResult): Boolean {
                 if (isFinishing) { result.cancel(); return true }
-                AlertDialog.Builder(this@MainActivity).setMessage(message ?: "").setPositiveButton("حسناً") { _, _ -> result.confirm() }
-                    .setOnCancelListener { result.cancel() }.show(); return true
+                bbDialog(message ?: "", 0, null) { ok, _ -> if (ok) result.confirm() else result.cancel() }; return true
             }
             override fun onJsConfirm(view: WebView, url: String?, message: String?, result: android.webkit.JsResult): Boolean {
                 if (isFinishing) { result.cancel(); return true }
-                AlertDialog.Builder(this@MainActivity).setMessage(message ?: "")
-                    .setPositiveButton("موافق") { _, _ -> result.confirm() }
-                    .setNegativeButton("إلغاء") { _, _ -> result.cancel() }
-                    .setOnCancelListener { result.cancel() }.show(); return true
+                bbDialog(message ?: "", 1, null) { ok, _ -> if (ok) result.confirm() else result.cancel() }; return true
             }
             override fun onJsPrompt(view: WebView, url: String?, message: String?, defaultValue: String?, result: android.webkit.JsPromptResult): Boolean {
                 if (isFinishing) { result.cancel(); return true }
-                val input = android.widget.EditText(this@MainActivity).apply { setText(defaultValue ?: ""); setSelection(text.length) }
-                val box = android.widget.FrameLayout(this@MainActivity).apply { val p = (20 * resources.displayMetrics.density).toInt(); setPadding(p, p / 2, p, 0); addView(input) }
-                AlertDialog.Builder(this@MainActivity).setMessage(message ?: "").setView(box)
-                    .setPositiveButton("موافق") { _, _ -> result.confirm(input.text.toString()) }
-                    .setNegativeButton("إلغاء") { _, _ -> result.cancel() }
-                    .setOnCancelListener { result.cancel() }.show(); return true
+                bbDialog(message ?: "", 2, defaultValue) { ok, v -> if (ok) result.confirm(v ?: "") else result.cancel() }; return true
             }
             override fun onJsBeforeUnload(view: WebView, url: String?, message: String?, result: android.webkit.JsResult): Boolean { result.confirm(); return true }
             /* الكاميرا والمايك من الصفحة (مكالمات الفيديو والصوت، الرسائل الصوتية، الباركود): نطلب صلاحية أندرويد ثم نعطيها للصفحة */
@@ -349,6 +340,51 @@ class MainActivity : Activity() {
                 catch (_: Throwable) { try { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))) } catch (_: Throwable) {} }
             }
             .show()
+    }
+
+    /* ===== نافذة عصرية موحّدة: kind 0 = تنبيه · 1 = تأكيد · 2 = إدخال ===== */
+    private fun bbDialog(msg: String, kind: Int, def: String?, cb: (Boolean, String?) -> Unit) {
+        val d = resources.displayMetrics.density; fun dp(v: Int) = (v * d).toInt()
+        val danger = kind == 1 && Regex("حذف|إلغاء|الغاء|مسح|خروج|إيقاف|رفض|نهائي").containsMatchIn(msg)
+        val brand = android.graphics.Color.parseColor(if (danger) "#E5484D" else "#1E2ABE")
+        val dlg = android.app.Dialog(this); var done = false
+        fun close(ok: Boolean, v: String?) { if (done) return; done = true; dlg.dismiss(); cb(ok, v) }
+        fun round(c: Int, r: Int, stroke: Int = 0) = android.graphics.drawable.GradientDrawable().apply { setColor(c); cornerRadius = dp(r).toFloat(); if (stroke != 0) setStroke(dp(1), stroke) }
+        val card = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL; layoutDirection = android.view.View.LAYOUT_DIRECTION_RTL
+            background = round(android.graphics.Color.WHITE, 26); setPadding(dp(22), dp(22), dp(22), dp(18)); elevation = dp(12).toFloat()
+        }
+        val ic = android.widget.TextView(this).apply {
+            text = when { kind == 0 -> "💬"; kind == 2 -> "✏️"; danger -> "⚠️"; else -> "❔" }; textSize = 26f; gravity = android.view.Gravity.CENTER
+            background = round(android.graphics.Color.argb(28, android.graphics.Color.red(brand), android.graphics.Color.green(brand), android.graphics.Color.blue(brand)), 30)
+        }
+        card.addView(ic, android.widget.LinearLayout.LayoutParams(dp(60), dp(60)).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL; bottomMargin = dp(14) })
+        val tv = android.widget.TextView(this).apply {
+            text = msg; textSize = 16.5f; setTextColor(android.graphics.Color.parseColor("#12142B")); gravity = android.view.Gravity.CENTER
+            setLineSpacing(dp(3).toFloat(), 1f); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        }
+        val sc = android.widget.ScrollView(this).apply { addView(tv) }
+        card.addView(sc, android.widget.LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
+        var input: android.widget.EditText? = null
+        if (kind == 2) { input = android.widget.EditText(this).apply { setText(def ?: ""); setSelection(text.length); textSize = 16f; background = round(android.graphics.Color.parseColor("#F3F4FA"), 14, android.graphics.Color.parseColor("#D7DAE8")); setPadding(dp(14), dp(12), dp(14), dp(12)); textDirection = android.view.View.TEXT_DIRECTION_ANY_RTL }
+            card.addView(input, android.widget.LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) }) }
+        val row = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.HORIZONTAL; layoutDirection = android.view.View.LAYOUT_DIRECTION_RTL }
+        fun btn(t: String, primary: Boolean, ok: Boolean) = android.widget.TextView(this).apply {
+            text = t; textSize = 15.5f; gravity = android.view.Gravity.CENTER; setPadding(0, dp(13), 0, dp(13)); typeface = android.graphics.Typeface.DEFAULT_BOLD
+            if (primary){ setTextColor(android.graphics.Color.WHITE); background = round(brand, 16) } else { setTextColor(android.graphics.Color.parseColor("#4A4E6A")); background = round(android.graphics.Color.parseColor("#EEF0F8"), 16) }
+            isClickable = true; isFocusable = true; setOnClickListener { close(ok, input?.text?.toString()) }
+        }
+        val okLbl = when { kind == 0 -> "حسناً"; danger -> "نعم، تأكيد"; kind == 2 -> "حفظ"; else -> "موافق" }
+        row.addView(btn(okLbl, true, true), android.widget.LinearLayout.LayoutParams(0, -2, 1f))
+        if (kind != 0) { row.addView(android.view.View(this), android.widget.LinearLayout.LayoutParams(dp(10), 1)); row.addView(btn("إلغاء", false, false), android.widget.LinearLayout.LayoutParams(0, -2, 1f)) }
+        card.addView(row, android.widget.LinearLayout.LayoutParams(-1, -2))
+        val wrap = android.widget.FrameLayout(this).apply { setPadding(dp(22), 0, dp(22), 0); addView(card, android.widget.FrameLayout.LayoutParams(-1, -2, android.view.Gravity.CENTER)) }
+        dlg.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE); dlg.setContentView(wrap)
+        dlg.window?.apply { setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)); setLayout(-1, -2); setDimAmount(0.55f); addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND); attributes = attributes.apply { windowAnimations = android.R.style.Animation_Dialog } }
+        dlg.setOnCancelListener { close(false, null) }
+        dlg.show()
+        card.scaleX = 0.92f; card.scaleY = 0.92f; card.alpha = 0f; card.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(180).start()
+        if (kind == 2) input?.requestFocus()
     }
 
     override fun onResume() {
