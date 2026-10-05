@@ -1,3 +1,11 @@
+/* نسختين من نفس المشروع وبنفس أمر البناء:
+   emp   = تطبيق الموظفين (بوابة الموظفين)  ·  admin = تطبيق المحاسبي (الإدارة)
+   رقم الإصدار لكل نسخة هنا ↓ — زوّد الرقم اللي تبي تحدّثه */
+val empVersionCode = 5
+val empVersion = "1.1.2"
+val adminVersionCode = 1
+val adminVersion = "1.0.0"
+
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
@@ -9,11 +17,34 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "sa.bluebrand.emb.mobile"
         minSdk = 24
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.1.0"
+    }
+
+    flavorDimensions += "app"
+    productFlavors {
+        create("emp") {
+            dimension = "app"
+            applicationId = "sa.bluebrand.emb.mobile"
+            versionCode = empVersionCode
+            versionName = empVersion
+            buildConfigField("String", "HOME_URL", "\"https://bluebrand-emp.web.app/\"")
+            buildConfigField("String", "UA_TAG", "\"BlueBrandEmpAndroid\"")
+            buildConfigField("String", "OLD_PKGS", "\"sa.bluebrand.portal\"")
+            buildConfigField("String", "KEEP_PKGS", "\"sa.bluebrand.cc,sa.bluebrand.mobile\"")
+            buildConfigField("boolean", "OLD_BY_NAME", "true")
+        }
+        create("admin") {
+            dimension = "app"
+            applicationId = "sa.bluebrand.mobile"
+            versionCode = adminVersionCode
+            versionName = adminVersion
+            buildConfigField("String", "HOME_URL", "\"https://bluebrand-cc.web.app/\"")
+            buildConfigField("String", "UA_TAG", "\"BlueBrandAdminAndroid\"")
+            buildConfigField("String", "OLD_PKGS", "\"sa.bluebrand.cc\"")
+            buildConfigField("String", "KEEP_PKGS", "\"sa.bluebrand.emb.mobile,sa.bluebrand.portal\"")
+            buildConfigField("boolean", "OLD_BY_NAME", "false")
+        }
     }
 
     /* توقيع ثابت من أسرار GitHub — عشان كل تحديث جاي ينثبت فوق القديم مباشرة */

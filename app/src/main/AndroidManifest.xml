@@ -12,6 +12,19 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
+    <!-- عشان نشوف التطبيق القديم المثبت ونطلب حذفه -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <package android:name="sa.bluebrand.portal" />
+        <package android:name="sa.bluebrand.cc" />
+    </queries>
 
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
@@ -23,7 +36,7 @@
         android:usesCleartextTraffic="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="BlueBrand Emp"
+        android:label="@string/app_name"
         android:theme="@style/Theme.BlueBrandEmp">
 
         <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="unspecified">
@@ -32,6 +45,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- شاشة المكالمة الواردة (تطلع فوق القفل) -->
+        <activity android:name=".CallActivity" android:exported="false" android:showWhenLocked="true" android:turnScreenOn="true"
+            android:launchMode="singleTop" android:excludeFromRecents="true" android:taskAffinity="sa.bluebrand.emb.mobile.call" android:screenOrientation="portrait" />
+        <receiver android:name=".CallActionReceiver" android:exported="false" />
 
         <service android:name=".BlueBrandMessagingService" android:exported="false">
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>

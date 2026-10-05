@@ -3,6 +3,7 @@ package sa.bluebrand.emb.mobile
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -33,10 +34,11 @@ import com.google.firebase.messaging.FirebaseMessaging
 import java.io.File
 
 class MainActivity : Activity() {
+    companion object { @Volatile var inFront = false }
     private lateinit var webView: WebView
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var cameraUri: Uri? = null
-    private val homeUrl = "https://bluebrand-emp.web.app/"
+    private val homeUrl = BuildConfig.HOME_URL
     private val fileChooserRequest = 4101
     private val cameraPermissionRequest = 4102
     private val notificationPermissionRequest = 4103
@@ -69,7 +71,7 @@ class MainActivity : Activity() {
             setGeolocationEnabled(true)
             builtInZoomControls = false
             displayZoomControls = false
-            userAgentString = "$userAgentString BlueBrandEmpAndroid/${BuildConfig.VERSION_NAME}"
+            userAgentString = "$userAgentString ${BuildConfig.UA_TAG}/${BuildConfig.VERSION_NAME}"
         }
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -173,6 +175,7 @@ class MainActivity : Activity() {
             }
         }
 
+        intent?.getIntExtra("cancel_notif", 0)?.takeIf { it != 0 }?.let { getSystemService(NotificationManager::class.java).cancel(it) }
         val initialUrl = (intent?.getStringExtra("notification_url") ?: intent?.getStringExtra("link"))?.takeIf { it.startsWith("https://") } ?: homeUrl
         webView.loadUrl(initialUrl)
 
@@ -222,6 +225,7 @@ class MainActivity : Activity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        intent?.getIntExtra("cancel_notif", 0)?.takeIf { it != 0 }?.let { getSystemService(NotificationManager::class.java).cancel(it) }
         val url = intent?.getStringExtra("notification_url") ?: intent?.getStringExtra("link")
         if (::webView.isInitialized && url != null && url.startsWith("https://")) webView.loadUrl(url)
     }
@@ -278,5 +282,62 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), notificationPermissionRequest)
         }
+    }
+
+    /* ===== إجبار حذف التطبيق القديم =====
+       يدوّر على أي تطبيق بلوبراند قديم مثبت (غير هذا وغير تطبيق الإدارة) ويطلب حذفه — النافذة ما تنقفل لين ينحذف */
+    private val oldPkgs = BuildConfig.OLD_PKGS.split(",").filter { it.isNotBlank() }.toSet()
+    private val keepPkgs = BuildConfig.KEEP_PKGS.split(",").filter { it.isNotBlank() }.toSet()  /* التطبيق الثاني (الإدارة/الموظفين) — لا ينحذف أبداً */
+    private var oldDlg: AlertDialog? = null
+
+    private fun findOldApps(): List<Pair<String, String>> = try {
+        val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val list = if (Build.VERSION.SDK_INT >= 33) packageManager.queryIntentActivities(i, PackageManager.ResolveInfoFlags.of(0))
+                   else @Suppress("DEPRECATION") packageManager.queryIntentActivities(i, 0)
+        val re = Regex("blue\\s*brand|بلو\\s*براند", RegexOption.IGNORE_CASE)
+        list.mapNotNull { r ->
+            val p = r.activityInfo.packageName
+            val l = r.loadLabel(packageManager).toString()
+            if (p == packageName || p in keepPkgs) null
+            else if (p in oldPkgs || (BuildConfig.OLD_BY_NAME && (p.startsWith("sa.bluebrand.") || re.containsMatchIn(l)))) p to l else null
+        }.distinctBy { it.first }
+    } catch (_: Throwable) { emptyList() }
+
+    private fun checkOldApps() {
+        val old = findOldApps()
+        oldDlg?.dismiss(); oldDlg = null
+        if (old.isEmpty()) return
+        val (pkg, label) = old.first()
+        oldDlg = AlertDialog.Builder(this)
+            .setTitle("احذف التطبيق القديم")
+            .setMessage("لازم تحذف النسخة القديمة «$label» عشان يشتغل التطبيق الجديد صح (الإشعارات والبصمة والدردشة).\n\nاضغط «حذف القديم» ثم «موافق».")
+            .setCancelable(false)
+            .setPositiveButton("حذف القديم") { _, _ ->
+                try { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg"))) }
+                catch (_: Throwable) { try { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))) } catch (_: Throwable) {} }
+            }
+            .show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        inFront = true
+        checkOldApps()
+        askFullScreenCalls()
+    }
+
+    override fun onPause() { inFront = false; super.onPause() }
+
+    /* أندرويد 14+: إذن «شاشة كاملة» عشان شاشة الاتصال تطلع والجوال مقفل — نطلبه مرة وحدة */
+    private fun askFullScreenCalls() {
+        if (Build.VERSION.SDK_INT < 34 || oldDlg?.isShowing == true) return
+        val nm = getSystemService(NotificationManager::class.java)
+        val sp = getSharedPreferences("bluebrand", MODE_PRIVATE)
+        if (nm.canUseFullScreenIntent() || sp.getBoolean("fsi_asked", false)) return
+        sp.edit().putBoolean("fsi_asked", true).apply()
+        AlertDialog.Builder(this).setTitle("📞 شاشة المكالمات")
+            .setMessage("عشان تطلع لك شاشة الاتصال حتى لو الجوال مقفل، فعّل «السماح بالإشعارات بملء الشاشة» للتطبيق.")
+            .setPositiveButton("تفعيل") { _, _ -> try { startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))) } catch (_: Throwable) {} }
+            .setNegativeButton("لاحقاً", null).show()
     }
 }
