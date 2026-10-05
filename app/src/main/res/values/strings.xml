@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">BlueBrand Emp</string>
+    <string name="default_notification_channel_id">bluebrand_emp_general</string>
+</resources>

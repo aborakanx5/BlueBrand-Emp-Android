@@ -1,0 +1,69 @@
+{
+  "project_info": {
+    "project_number": "446823315116",
+    "firebase_url": "https://bluebrand-sa-default-rtdb.firebaseio.com",
+    "project_id": "bluebrand-sa",
+    "storage_bucket": "bluebrand-sa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:446823315116:android:07ba20fd69593d723ad109",
+        "android_client_info": {
+          "package_name": "sa.bluebrand.emb.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "446823315116-rujm4vti5g7oq58tuctekbek06d65cgd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClAh2mYJ_srMR5OR4CX_nDaXzT_SYdlRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "446823315116-rujm4vti5g7oq58tuctekbek06d65cgd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:446823315116:android:d2037436a12f7a7a3ad109",
+        "android_client_info": {
+          "package_name": "sa.bluebrand.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "446823315116-rujm4vti5g7oq58tuctekbek06d65cgd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClAh2mYJ_srMR5OR4CX_nDaXzT_SYdlRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "446823315116-rujm4vti5g7oq58tuctekbek06d65cgd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
