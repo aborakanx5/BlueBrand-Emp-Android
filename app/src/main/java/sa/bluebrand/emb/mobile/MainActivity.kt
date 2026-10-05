@@ -55,7 +55,7 @@ class MainActivity : Activity() {
         createNotificationChannel()
         requestNotificationPermissionIfNeeded()
 
-        webView = WebView(applicationContext)
+        webView = WebView(this)  /* سياق النشاط (مو التطبيق) — عشان نوافذ التأكيد تقدر تظهر */
         /* حاوية تاخذ مسافة شريط الحالة وأزرار الجوال (وكيبورد) — عشان البرنامج ما يتداخل مع البار العلوي */
         val root = android.widget.FrameLayout(this).apply { setBackgroundColor(android.graphics.Color.parseColor("#1E2ABE")) }
         root.addView(webView, android.widget.FrameLayout.LayoutParams(-1, -1))
@@ -106,6 +106,29 @@ class MainActivity : Activity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            /* نوافذ alert / confirm / prompt من البرنامج (تأكيد الإرسال والحذف…) — بدونها الزر ما يسوي شي داخل التطبيق */
+            override fun onJsAlert(view: WebView, url: String?, message: String?, result: android.webkit.JsResult): Boolean {
+                if (isFinishing) { result.cancel(); return true }
+                AlertDialog.Builder(this@MainActivity).setMessage(message ?: "").setPositiveButton("حسناً") { _, _ -> result.confirm() }
+                    .setOnCancelListener { result.cancel() }.show(); return true
+            }
+            override fun onJsConfirm(view: WebView, url: String?, message: String?, result: android.webkit.JsResult): Boolean {
+                if (isFinishing) { result.cancel(); return true }
+                AlertDialog.Builder(this@MainActivity).setMessage(message ?: "")
+                    .setPositiveButton("موافق") { _, _ -> result.confirm() }
+                    .setNegativeButton("إلغاء") { _, _ -> result.cancel() }
+                    .setOnCancelListener { result.cancel() }.show(); return true
+            }
+            override fun onJsPrompt(view: WebView, url: String?, message: String?, defaultValue: String?, result: android.webkit.JsPromptResult): Boolean {
+                if (isFinishing) { result.cancel(); return true }
+                val input = android.widget.EditText(this@MainActivity).apply { setText(defaultValue ?: ""); setSelection(text.length) }
+                val box = android.widget.FrameLayout(this@MainActivity).apply { val p = (20 * resources.displayMetrics.density).toInt(); setPadding(p, p / 2, p, 0); addView(input) }
+                AlertDialog.Builder(this@MainActivity).setMessage(message ?: "").setView(box)
+                    .setPositiveButton("موافق") { _, _ -> result.confirm(input.text.toString()) }
+                    .setNegativeButton("إلغاء") { _, _ -> result.cancel() }
+                    .setOnCancelListener { result.cancel() }.show(); return true
+            }
+            override fun onJsBeforeUnload(view: WebView, url: String?, message: String?, result: android.webkit.JsResult): Boolean { result.confirm(); return true }
             /* الكاميرا والمايك من الصفحة (مكالمات الفيديو والصوت، الرسائل الصوتية، الباركود): نطلب صلاحية أندرويد ثم نعطيها للصفحة */
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread {
