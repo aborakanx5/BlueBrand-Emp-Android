@@ -1,4 +1,4 @@
-name: Build BlueBrand EMB APK
+name: Build BlueBrand APKs (Emp + Admin)
 
 on:
   workflow_dispatch:
@@ -23,36 +23,40 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      # مفتاح التوقيع الثابت (من الأسرار) — بدونه يطلع APK تجريبي ما ينثبت فوقه التحديث
       - name: Signing key
         id: ks
         env:
           KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$KS" ]; then echo "$KS" | base64 -d > $RUNNER_TEMP/bb.keystore; echo "path=$RUNNER_TEMP/bb.keystore" >> $GITHUB_OUTPUT; else echo "::warning::ما فيه مفتاح توقيع — شغّل «Create signing key» وأضف الأسرار الأربعة"; fi
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > $RUNNER_TEMP/bb.keystore; echo "path=$RUNNER_TEMP/bb.keystore" >> $GITHUB_OUTPUT; else echo "::warning::ما فيه مفتاح توقيع"; fi
 
-      - name: Build APK
+      - name: Build APK (الموظفين + المحاسبي)
         env:
           KEYSTORE_PATH: ${{ steps.ks.outputs.path }}
           KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          mkdir -p out
-          if [ -n "$KEYSTORE_PATH" ]; then
-            gradle assembleRelease --stacktrace
-            cp app/build/outputs/apk/release/app-release.apk out/bluebrand-portal.apk
-          else
-            gradle assembleDebug --stacktrace
-            cp app/build/outputs/apk/debug/app-debug.apk out/bluebrand-portal.apk
-          fi
-          V=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          printf '{ "ver": "%s", "notes": "المكالمات الصوتية والمرئية والرسائل الصوتية في الدردشة" }\n' "$V" > out/version.json
-          ls -la out
+          mkdir -p out/emp out/admin
+          if [ -n "$KEYSTORE_PATH" ]; then T=release; gradle assembleEmpRelease assembleAdminRelease --stacktrace; else T=debug; echo "::warning::بدون توقيع — debug"; gradle assembleEmpDebug assembleAdminDebug --stacktrace; fi
+          cp app/build/outputs/apk/emp/$T/app-emp-$T.apk out/emp/bluebrand-portal.apk
+          cp app/build/outputs/apk/admin/$T/app-admin-$T.apk out/admin/bluebrand-admin.apk
+          VE=$(grep -oP 'val empVersion = "\K[^"]+' app/build.gradle.kts); VA=$(grep -oP 'val adminVersion = "\K[^"]+' app/build.gradle.kts)
+          printf '{ "ver": "%s", "min": "%s", "notes": "شاشة اتصال كاملة للمكالمات + المايك والموقع والإشعارات" }\n' "$VE" "$VE" > out/emp/version.json
+          printf '{ "ver": "%s", "notes": "المايك والكاميرا والموقع والإشعارات" }\n' "$VA" > out/admin/version.json
+          echo "### ✅ تم البناء ($T) — الموظفين $VE · المحاسبي $VA" >> $GITHUB_STEP_SUMMARY
+          ls -la out/*
 
-      - name: Upload APK
+      - name: Upload Emp APK
         uses: actions/upload-artifact@v4
         with:
           name: BlueBrand-Emp-APK
-          path: out/*
+          path: out/emp/*
+          if-no-files-found: error
+
+      - name: Upload Admin APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BlueBrand-Admin-APK
+          path: out/admin/*
           if-no-files-found: error
