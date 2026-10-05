@@ -56,7 +56,16 @@ class MainActivity : Activity() {
         requestNotificationPermissionIfNeeded()
 
         webView = WebView(applicationContext)
-        setContentView(webView)
+        /* حاوية تاخذ مسافة شريط الحالة وأزرار الجوال (وكيبورد) — عشان البرنامج ما يتداخل مع البار العلوي */
+        val root = android.widget.FrameLayout(this).apply { setBackgroundColor(android.graphics.Color.parseColor("#1E2ABE")) }
+        root.addView(webView, android.widget.FrameLayout.LayoutParams(-1, -1))
+        setContentView(root)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, ins ->
+            val b = ins.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.displayCutout() or androidx.core.view.WindowInsetsCompat.Type.ime())
+            v.setPadding(b.left, b.top, b.right, b.bottom)
+            androidx.core.view.WindowInsetsCompat.CONSUMED
+        }
+        try { androidx.core.view.WindowInsetsControllerCompat(window, root).isAppearanceLightStatusBars = false } catch (_: Throwable) {}
 
         with(webView.settings) {
             javaScriptEnabled = true
