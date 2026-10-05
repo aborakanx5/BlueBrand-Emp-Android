@@ -1,0 +1,40 @@
+{
+  "appId": "sa.bluebrand.cc",
+  "appName": "بلوبراند — المحاسبي",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#1E2ABE",
+    "appendUserAgent": "BlueBrandApp",
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "server": {
+    "url": "https://bluebrand-cc.web.app",
+    "androidScheme": "https",
+    "errorPath": "offline.html",
+    "cleartext": false
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    },
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#1E2ABE",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "backgroundColor": "#1E2ABE",
+      "style": "DARK",
+      "overlaysWebView": false
+    }
+  }
+}
