@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Looper
 import android.os.Environment
 import android.provider.MediaStore
 import android.print.PrintAttributes
@@ -89,6 +90,11 @@ class MainActivity : Activity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            /* بعد ما تكتمل كل صفحة: نسلّمها رمز الإشعارات (قبلها كان يضيع لو الصفحة لسا تحمّل) */
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                getSharedPreferences("bluebrand", MODE_PRIVATE).getString("fcm_token", null)?.let { publishTokenToWeb(it) }
+            }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
                 return when (uri.scheme?.lowercase()) {
@@ -200,6 +206,12 @@ class MainActivity : Activity() {
 
         intent?.getIntExtra("cancel_notif", 0)?.takeIf { it != 0 }?.let { getSystemService(NotificationManager::class.java).cancel(it) }
         val initialUrl = (intent?.getStringExtra("notification_url") ?: intent?.getStringExtra("link"))?.takeIf { it.startsWith("https://") } ?: homeUrl
+        /* الصفحة تقدر تطلب الرمز بنفسها: BlueBrandNative.fcmToken() */
+        webView.addJavascriptInterface(object {
+            @android.webkit.JavascriptInterface fun fcmToken(): String = getSharedPreferences("bluebrand", MODE_PRIVATE).getString("fcm_token", "") ?: ""
+            @android.webkit.JavascriptInterface fun notifEnabled(): Boolean = androidx.core.app.NotificationManagerCompat.from(this@MainActivity).areNotificationsEnabled()
+            @android.webkit.JavascriptInterface fun openNotifSettings() { runOnUiThread { try { startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)) } catch (_: Throwable) {} } }
+        }, "BlueBrandNative")
         webView.loadUrl(initialUrl)
 
         // Firebase is intentionally initialized after the UI so a messaging issue cannot block app startup.
@@ -281,6 +293,7 @@ class MainActivity : Activity() {
     private fun publishTokenToWeb(token: String) {
         if (!::webView.isInitialized) return
         val safe = token.replace("\\", "\\\\").replace("'", "\\'")
+        if (Looper.myLooper() != Looper.getMainLooper()) { webView.post { publishTokenToWeb(token) }; return }
         webView.evaluateJavascript(
             "try{localStorage.setItem('bluebrand_fcm_token','$safe');window.dispatchEvent(new CustomEvent('bluebrand-fcm-token',{detail:'$safe'}));}catch(e){}",
             null
