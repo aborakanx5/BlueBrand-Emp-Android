@@ -1,0 +1,31 @@
+name: Create signing key
+
+# مرة وحدة بس: يسوي مفتاح توقيع ثابت للتطبيق
+# بعدها: نزّل الناتج، وأضف الأسرار الأربعة في Settings → Secrets and variables → Actions، واحفظ الملف في مكان آمن
+on:
+  workflow_dispatch:
+
+jobs:
+  key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Generate
+        run: |
+          mkdir -p key
+          PASS=$(openssl rand -hex 16)
+          keytool -genkeypair -v -keystore key/bluebrand.keystore -alias bluebrand -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$PASS" -keypass "$PASS" -dname "CN=BlueBrand, O=Laroche Trading, C=SA"
+          base64 -w0 key/bluebrand.keystore > key/ANDROID_KEYSTORE_BASE64.txt
+          printf '%s' "$PASS" > key/ANDROID_KEYSTORE_PASSWORD.txt
+          printf '%s' "$PASS" > key/ANDROID_KEY_PASSWORD.txt
+          printf 'bluebrand' > key/ANDROID_KEY_ALIAS.txt
+          echo "كل ملف .txt = سر بنفس اسمه — انسخ محتواه كامل" > key/README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signing-key-KEEP-SAFE
+          path: key/*
+          retention-days: 1
